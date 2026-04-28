@@ -2,7 +2,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Liste des fichiers (adapte les noms selon tes fichiers réels)
 files = {
     "Caltech": "fb100/data/Caltech36.gml",
     "MIT": "fb100/data/MIT8.gml",
@@ -26,7 +25,6 @@ for name, path in files.items():
         "Edges": G.number_of_edges()
     }
 
-    # 4. Tracé de la distribution des degrés [cite: 99]
     degrees = [d for n, d in G.degree()]
     plt.figure(figsize=(8, 4))
     plt.hist(degrees, bins=50, color='skyblue', edgecolor='black')
@@ -35,7 +33,6 @@ for name, path in files.items():
     plt.ylabel("Frequency")
     plt.show()
 
-# Affichage des résultats pour l'analyse
 for name, data in results.items():
     print(f"--- {name} ---")
     for k, v in data.items():
