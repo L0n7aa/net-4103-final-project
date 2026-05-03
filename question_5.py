@@ -86,39 +86,41 @@ if __name__ == "__main__":
                 for epoch in range(200):
                     optimizer.zero_grad()
                     out = model(data)
-                    # On ne calcule l'erreur que sur le masque d'entraînement
                     loss = F.nll_loss(out[data.train_mask], data.y[data.train_mask])
                     loss.backward()
                     optimizer.step()
                     
-                # Évaluation sur les données retirées (test_mask)
                 model.eval()
                 with torch.no_grad():
                     pred = model(data).argmax(dim=1)
                     y_true = data.y[data.test_mask].cpu().numpy()
                     y_pred = pred[data.test_mask].cpu().numpy()
                     
+                    mae = mean_absolute_error(y_true, y_pred)
                     acc = accuracy_score(y_true, y_pred)
                     f1 = f1_score(y_true, y_pred, average='macro')
                     
-                    # C'EST ICI QUE ÇA SE JOUE :
                     results.append({
                         "University": path.split('/')[-1],
                         "Attribute": attr,
                         "Fraction": frac,
+                        "MAE": mae,
                         "Accuracy": acc,
-                        "Macro F1": f1  # Vérifie bien l'orthographe exacte ici
+                        "Macro F1": f1  
                 })
 
-    # On transforme la liste de dictionnaires en DataFrame
     df_final = pd.DataFrame(results)
-
-    # On vérifie si les colonnes existent pour éviter l'erreur
-    print(df_final.columns) 
-
     sns.set_theme(style="whitegrid")
 
-    # Graphique 1 : Accuracy
+    # Graphique 1 : MAE
+    plt.figure(figsize=(10, 6))
+    sns.lineplot(data=df_final, x="Fraction", y="MAE", hue="Attribute", marker="o")
+    plt.title("MAE moyenne par attribut et fraction")
+    plt.ylabel("MAE")
+    plt.xlabel("Fraction de labels retirés (f)")
+    plt.show()
+
+    # Graphique 2 : Accuracy
     plt.figure(figsize=(10, 6))
     sns.lineplot(data=df_final, x="Fraction", y="Accuracy", hue="Attribute", marker="o")
     plt.title("Précision (Accuracy) moyenne par attribut et fraction")
@@ -126,9 +128,8 @@ if __name__ == "__main__":
     plt.xlabel("Fraction de labels retirés (f)")
     plt.show()
 
-    # Graphique 2 : Macro F1
+    # Graphique 3 : Macro F1
     plt.figure(figsize=(10, 6))
-    # Seaborn va maintenant trouver "Macro F1" car on l'a ajouté dans le dictionnaire
     sns.lineplot(data=df_final, x="Fraction", y="Macro F1", hue="Attribute", marker="s", linestyle="--")
     plt.title("Performance réelle (Macro F1) moyenne par attribut")
     plt.ylabel("Macro F1 Moyen")
