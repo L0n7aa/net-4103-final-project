@@ -22,23 +22,18 @@ class GCNEncoder(torch.nn.Module):
         return self.conv2(x, edge_index)
     
 def evaluate_gnn_top_k(z, train_data, test_data, k_list):
-    """Calcule Precision@k et Recall@k à partir des embeddings du GNN"""
-    # 1. Calculer les probabilités
+    # Calculer les probabilités
     adj_pred = torch.sigmoid(torch.matmul(z, z.t())).cpu().numpy()
     
-    # 2. Masquer les arêtes déjà vues durant l'entraînement
-    # On utilise edge_index car c'est là que sont stockées les arêtes d'entraînement
+    # Masquer les arêtes déjà vues durant l'entraînement
     edge_index_train = train_data.edge_index.cpu().numpy()
     adj_pred[edge_index_train[0], edge_index_train[1]] = 0
     adj_pred[edge_index_train[1], edge_index_train[0]] = 0
     np.fill_diagonal(adj_pred, 0)
     
-    # 3. Trier les probabilités
     flat_adj = adj_pred.flatten()
     top_indices = np.argsort(flat_adj)[::-1]
     
-    # 4. Identifier SEULEMENT les arêtes de test positives (les vrais liens cachés)
-    # Dans test_data, les vraies arêtes sont celles où edge_label == 1
     mask_pos = (test_data.edge_label == 1)
     pos_edges = test_data.edge_label_index[:, mask_pos].cpu().numpy()
     true_edges_set = set(zip(pos_edges[0], pos_edges[1]))

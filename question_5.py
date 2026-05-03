@@ -36,7 +36,6 @@ if __name__ == "__main__":
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         def prepare_data_for_attribute(G, target_attr, missing_fraction):
-            """Prépare le graphe PyG et crée les masques d'entraînement/test"""
             # 1. Extraire les labels et filtrer les nœuds sans valeurs (missing data)
             labels = []
             valid_nodes = []
