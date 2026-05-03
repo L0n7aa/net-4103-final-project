@@ -66,14 +66,10 @@ if __name__ == "__main__":
     k_list = [50, 100, 200, 400]
     fractions_f = [0.05, 0.1, 0.15, 0.2]
 
-    # 2. Préparation des données
-    # Supposons que 'graph' est ton graphe Facebook100 déjà chargé
-    # Il faut séparer les arêtes pour simuler la disparition de liens (comme demandé dans la question 4.c)
-
     for path in small_graphs:
 
         univ_name = path.split('/')[-1].replace('.gml', '')
-        G_nx = nx.read_gml(path) # Graphe pour les métriques topologiques
+        G_nx = nx.read_gml(path) 
         G_pyg = from_networkx(G_nx)
 
         feature_names = ['student_fac', 'gender', 'major_index', 'dorm', 'year']
@@ -81,16 +77,12 @@ if __name__ == "__main__":
         x_list = []
         for name in feature_names:
             if hasattr(G_pyg, name):
-                # On récupère l'attribut et on s'assure qu'il est au bon format (N, 1)
                 val = getattr(G_pyg, name).view(-1, 1).float()
                 x_list.append(val)
         
         if len(x_list) > 0:
-            # On concatène tout pour créer la matrice de caractéristiques X
             G_pyg.x = torch.cat(x_list, dim=-1)
         else:
-            # Si aucun attribut n'est trouvé, on utilise une matrice identité (fallback)
-            # Cela permet au GNN de fonctionner uniquement sur la topologie
             G_pyg.x = torch.eye(G_pyg.num_nodes)
 
         for f in fractions_f:
@@ -98,48 +90,31 @@ if __name__ == "__main__":
             transform = T.RandomLinkSplit(num_test=f, num_val=0.0, is_undirected=True)
             train_data, _, test_data = transform(G_pyg)
 
-            # 3. Initialisation du modèle
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            num_features = G_pyg.num_features # Nombre d'attributs (dorm, major, etc.)
+            num_features = G_pyg.num_features 
 
-            model = GAE(GCNEncoder(G_pyg.num_features, 64, 32)).to(device)
+            model = GAE(GCNEncoder(G_pyg.num_features, 128, 64)).to(device)
             optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
-            # 4. Boucle d'entraînement
             def train():
                 model.train()
                 optimizer.zero_grad()
-                
-                # Génère les embeddings Z à partir des données d'entraînement
                 z = model.encode(train_data.x.to(device), train_data.edge_index.to(device))
-                
-                # Calcule la perte (reconstruction de la matrice d'adjacence)
                 loss = model.recon_loss(z, train_data.pos_edge_label_index.to(device))
                 loss.backward()
                 optimizer.step()
                 return float(loss)
-            
+        
             model.train()
-
-            # Entraînement sur 100 époques
-            model.train()
-            for epoch in range(100):
+            for epoch in range(1000):
                 optimizer.zero_grad()
-                # On utilise edge_index pour le passage de messages (GCN)
                 z = model.encode(train_data.x.to(device), train_data.edge_index.to(device))
-                
-                # On utilise edge_label_index pour calculer la perte de reconstruction
-                # Note: ici on utilise edge_label_index au lieu de pos_edge_label_index
                 loss = model.recon_loss(z, train_data.edge_label_index.to(device))
-                
                 loss.backward()
                 optimizer.step()
 
-            # Évaluation
             model.eval()
             with torch.no_grad():
-                # Important : pour l'évaluation, on utilise toujours train_data.edge_index 
-                # (les liens connus) pour générer les embeddings
                 z_final = model.encode(test_data.x.to(device), train_data.edge_index.to(device))
                 res_gnn = evaluate_gnn_top_k(z_final, train_data, test_data, k_list)
                 
